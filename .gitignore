@@ -1,0 +1,4 @@
+build/
+coanacatl.egg-info/
+dist/
+*~

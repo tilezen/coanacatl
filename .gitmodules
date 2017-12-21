@@ -1,0 +1,12 @@
+[submodule "vendor/mapbox/vtzero"]
+	path = vendor/mapbox/vtzero
+	url = https://github.com/mapbox/vtzero.git
+[submodule "vendor/mapbox/protozero"]
+	path = vendor/mapbox/protozero
+	url = https://github.com/mapbox/protozero.git
+[submodule "vendor/mapbox/wagyu"]
+	path = vendor/mapbox/wagyu
+	url = https://github.com/mapbox/wagyu.git
+[submodule "vendor/mapbox/geometry.hpp"]
+	path = vendor/mapbox/geometry.hpp
+	url = https://github.com/mapbox/geometry.hpp.git
