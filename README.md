@@ -24,7 +24,7 @@ You will need to install a C++11 build system and the GEOS library, e.g: if you 
 sudo apt install build-essential libgeos-dev
 ```
 
-**NOTE: probably other stuff as well! Please [file an issue]((https://github.com/tilezen/coanacatl/issues/new) if you find you need additional dependencies.**
+**NOTE: probably other stuff as well! Please [file an issue](https://github.com/tilezen/coanacatl/issues/new) if you find you need additional dependencies.**
 
 Please make sure that the git submodules are initialise and updated:
 
