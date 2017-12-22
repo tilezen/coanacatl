@@ -98,6 +98,11 @@ private:
   polygon geom_to_poly(const GEOSGeom_t *geometry);
   linear_ring ring_to_mbg(const GEOSGeom_t *linear_ring);
   void add_linestring(vtzero::linestring_feature_builder &fb, const GEOSGeom_t *geometry);
+  void encode_wagyu_result(
+    wagyu &w,
+    bp::dict props,
+    uint64_t fid,
+    vtzero::layer_builder &lb);
 };
 
 void encoder::encode_layer(bp::object layer) {
@@ -298,31 +303,7 @@ void encoder::encode_polygon(
   polygon poly = geom_to_poly(geometry);
   w.add_polygon(poly);
 
-  multi_polygon result;
-  bool ok = w.execute(mgw::clip_type_union, result,
-    mgw::fill_type_even_odd,
-    mgw::fill_type_even_odd);
-
-  if (!ok) {
-    // this is probably because the polygon ended up being degenerate in integer
-    // coordinates.
-
-    // TODO: warning?
-    return;
-  }
-
-  assert(result.size() > 0);
-
-  vtzero::polygon_feature_builder fb{lb};
-  add_id(fb, fid);
-
-  for (const polygon &p : result) {
-    for (const linear_ring &lr : p) {
-      fb.add_ring_from_container(lr);
-    }
-  }
-
-  add_properties(fb, props);
+  encode_wagyu_result(w, props, fid, lb);
 }
 
 void encoder::encode_multi_point(
@@ -401,14 +382,29 @@ void encoder::encode_multi_polygon(
     w.add_polygon(geom_to_poly(geom));
   }
 
+  encode_wagyu_result(w, props, fid, lb);
+}
+
+void encoder::encode_wagyu_result(
+  wagyu &w,
+  bp::dict props,
+  uint64_t fid,
+  vtzero::layer_builder &lb) {
+
   multi_polygon result;
-  w.execute(mgw::clip_type_union, result,
+  bool ok = w.execute(mgw::clip_type_union, result,
     mgw::fill_type_even_odd,
     mgw::fill_type_even_odd);
 
-  if (result.size() == 0) {
-    throw std::runtime_error("Empty result from Wagyu.");
+  if (!ok) {
+    // this is probably because the polygon ended up being degenerate in integer
+    // coordinates.
+
+    // TODO: warning?
+    return;
   }
+
+  assert(result.size() > 0);
 
   vtzero::polygon_feature_builder fb{lb};
   add_id(fb, fid);
