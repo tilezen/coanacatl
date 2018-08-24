@@ -30,7 +30,14 @@ const uint64_t FID_NONE = std::numeric_limits<uint64_t>::max();
 #define INIT_GEOS GEOS_init_r()
 #define FINISH_GEOS GEOS_finish_r
 #else
-#define INIT_GEOS initGEOS_r(printf, printf)
+#include <stdarg.h>
+void _coanacatl_printf(const char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+  vprintf(fmt, ap);
+  va_end(ap);
+}
+#define INIT_GEOS initGEOS_r(_coanacatl_printf, _coanacatl_printf)
 #define FINISH_GEOS finishGEOS_r
 #endif
 
