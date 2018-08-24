@@ -26,11 +26,19 @@ typedef mgw::wagyu<coord> wagyu;
 // IDs to None and keep the real ID in the properties.
 const uint64_t FID_NONE = std::numeric_limits<uint64_t>::max();
 
+#if GEOS_CAPI_VERSION_MINOR >= 9
+#define INIT_GEOS GEOS_init_r()
+#define FINISH_GEOS GEOS_finish_r
+#else
+#define INIT_GEOS initGEOS_r(printf, printf)
+#define FINISH_GEOS finishGEOS_r
+#endif
+
 class encoder {
 public:
   encoder(bp::tuple bounds, size_t extents)
     : m_extents(extents)
-    , m_geos_ctx(GEOS_init_r()) {
+    , m_geos_ctx(INIT_GEOS) {
     if (bp::len(bounds) != 4) {
       throw std::runtime_error("Bounds tuple must have 4 elements.");
     }
@@ -41,7 +49,7 @@ public:
   }
 
   ~encoder() {
-    GEOS_finish_r(m_geos_ctx);
+    FINISH_GEOS(m_geos_ctx);
   }
 
   void encode_layer(bp::object layer);
