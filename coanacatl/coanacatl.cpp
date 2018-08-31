@@ -214,7 +214,7 @@ void encoder::encode_point(
 
   double x, y;
   GEOSGeomGetX_r(m_geos_ctx, geometry, &x);
-  GEOSGeomGetX_r(m_geos_ctx, geometry, &y);
+  GEOSGeomGetY_r(m_geos_ctx, geometry, &y);
   vtzero::point p = translate(x, y);
   fb.add_point(p);
 
@@ -343,7 +343,7 @@ void encoder::encode_multi_point(
     }
     double x, y;
     GEOSGeomGetX_r(m_geos_ctx, geom, &x);
-    GEOSGeomGetX_r(m_geos_ctx, geom, &y);
+    GEOSGeomGetY_r(m_geos_ctx, geom, &y);
     vtzero::point p = translate(x, y);
     fb.set_point(p);
   }
