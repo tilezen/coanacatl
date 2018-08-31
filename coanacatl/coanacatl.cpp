@@ -199,7 +199,7 @@ void encoder::add_properties(vtzero::feature_builder &fb, bp::dict props) {
 
 vtzero::point encoder::translate(double x, double y) {
   int quant_x = double(m_extents) * (x - m_minx) / (m_maxx - m_minx);
-  int quant_y = double(m_extents) * (y - m_miny) / (m_maxy - m_miny);
+  int quant_y = double(m_extents) * (m_maxy - y) / (m_maxy - m_miny);
   return vtzero::point(quant_x, quant_y);
 }
 
