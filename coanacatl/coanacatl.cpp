@@ -199,6 +199,8 @@ void encoder::add_properties(vtzero::feature_builder &fb, bp::dict props) {
 
 vtzero::point encoder::translate(double x, double y) {
   int quant_x = double(m_extents) * (x - m_minx) / (m_maxx - m_minx);
+  // remember: MVT tile coordinates are y-down, "screen" space. mercator
+  // coordinates are y-up, "world" space, so we need to flip the y coord.
   int quant_y = double(m_extents) * (m_maxy - y) / (m_maxy - m_miny);
   return vtzero::point(quant_x, quant_y);
 }
