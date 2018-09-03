@@ -41,6 +41,36 @@ void _coanacatl_printf(const char *fmt, ...) {
 #define FINISH_GEOS finishGEOS_r
 #endif
 
+namespace {
+
+/**
+ * Extract a string from a Python object. The object _must_ be either a str or
+ * unicode object, else an exception will be thrown.
+ */
+std::string extract_utf8_string(bp::object value) {
+  PyObject *value_ptr = value.ptr();
+
+  if (PyUnicode_Check(value_ptr)) {
+    bp::object encoded = bp::str(value).encode("utf-8");
+    std::string v = bp::extract<std::string>(encoded);
+    return v;
+
+  } else if (PyString_Check(value_ptr)) {
+    std::string v = bp::extract<std::string>(value);
+    return v;
+
+  } else {
+    std::ostringstream out;
+    bp::object repr_py = value.attr("__repr__")();
+    std::string repr = bp::extract<std::string>(repr_py);
+    out << "Unable to convert Python object of type "
+        << value_ptr->ob_type->tp_name << " to string: " << repr;
+    throw std::runtime_error(out.str());
+  }
+}
+
+} // end anonymous namespace
+
 class encoder {
 public:
   encoder(bp::tuple bounds, size_t extents)
@@ -121,7 +151,7 @@ private:
 };
 
 void encoder::encode_layer(bp::object layer) {
-  std::string layer_name = bp::extract<std::string>(layer["name"]);
+  std::string layer_name = extract_utf8_string(layer["name"]);
 
   if (m_layer_names.count(layer_name) > 0) {
     throw std::runtime_error("Duplicate layer names are not allowed.");
@@ -158,7 +188,7 @@ void encoder::add_properties(vtzero::feature_builder &fb, bp::dict props) {
   const size_t num_items = bp::len(items);
   for (size_t i = 0; i < num_items; ++i) {
     bp::object item = items[i];
-    std::string k = bp::extract<std::string>(item[0]);
+    std::string k = extract_utf8_string(item[0]);
     bp::object value = item[1];
     PyObject *value_ptr = value.ptr();
 
@@ -174,13 +204,8 @@ void encoder::add_properties(vtzero::feature_builder &fb, bp::dict props) {
       int64_t v = bp::extract<int64_t>(value);
       fb.add_property(k, v);
 
-    } else if (PyUnicode_Check(value_ptr)) {
-      bp::object encoded = bp::str(value).encode("utf-8");
-      std::string v = bp::extract<std::string>(encoded);
-      fb.add_property(k, v);
-
-    } else if (PyString_Check(value_ptr)) {
-      std::string v = bp::extract<std::string>(value);
+    } else if (PyUnicode_Check(value_ptr) || PyString_Check(value_ptr)) {
+      std::string v = extract_utf8_string(value);
       fb.add_property(k, v);
 
     } else {
