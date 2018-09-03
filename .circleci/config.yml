@@ -1,0 +1,19 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/python:2.7.15-stretch
+    steps:
+      - checkout
+      - run:
+          name: Install C++ dependencies
+          command: sudo apt install build-essential libgeos-dev libboost-python-dev
+      - run:
+          name: Install Python dependencies
+          command: sudo pip install shapely
+      - run:
+          name: Build library
+          command: python setup.py build
+      - run:
+          name: Unit tests
+          command: python setup.py test
