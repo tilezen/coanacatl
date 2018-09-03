@@ -21,7 +21,13 @@ Where:
 You will need to install a C++11 build system and the GEOS library, e.g: if you are on Ubuntu or Debian:
 
 ```
-sudo apt install build-essential libgeos-dev
+sudo apt install build-essential libgeos-dev libboost-python-dev
+```
+
+You will also need the [Shapely](http://toblerity.org/shapely/) Python library. Install (with or without `sudo` depending on whether you're installing it globally or locally):
+
+```
+pip install shapely
 ```
 
 **NOTE: probably other stuff as well! Please [file an issue](https://github.com/tilezen/coanacatl/issues/new) if you find you need additional dependencies.**
@@ -41,8 +47,8 @@ python setup.py install
 ## Current limitations
 
 * Only point, linestring, polygon and multi-versions of those are supported. Linear rings and geometry collections are currently not supported.
-* Property dictionary keys must be strings, as per the MVT spec. Property dictionary values can be boolean, integer, floating point or strings.
-* There are **no tests**!
+* Property dictionary keys must be strings (or `unicode`), as per the MVT spec. Property dictionary values can be boolean, integer, floating point or strings.
+* There are **very few tests**!
 * Error checking of return values from the GEOS API is inadequate, and needs shoring up.
 * There needs to be a better way to return warnings/errors to the user, perhaps as a list of objects, so that the user can determine if it's enough to fail the tile or just log.
 
