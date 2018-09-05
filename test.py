@@ -224,3 +224,28 @@ class DiscardEmptyTest(TestCase):
 
         tile_data = coanacatl.encode(layers, bounds, extents)
         self.assertEqual('', tile_data)
+
+    def test_discard_empty_line(self):
+        import coanacatl
+        from shapely.geometry import LineString
+
+        shape = LineString([(0, 0), (1.0e-10, 0)])
+
+        layers = [dict(
+            name=unicode('layer'),
+            features=[
+                dict(
+                    geometry=shape,
+                    properties={
+                        'foo': 'bar',
+                    },
+                    id=1
+                ),
+            ],
+        )]
+
+        bounds = (0, 0, 1, 1)
+        extents = 4096
+
+        tile_data = coanacatl.encode(layers, bounds, extents)
+        self.assertEqual('', tile_data)
