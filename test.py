@@ -187,3 +187,65 @@ class PropertyTest(TestCase):
         tile_data = coanacatl.encode(layers, bounds, extents)
         self.assertTrue(tile_data)
         return tile_data
+
+
+class DiscardEmptyTest(TestCase):
+
+    def test_discard_empty_polygon(self):
+        """
+        Test that a polygon which becomes invalid (no rings returned from
+        Wagyu) is discarded, rather than being output as an empty geometry.
+        """
+
+        import coanacatl
+        from shapely.wkb import loads as wkb_loads
+
+        shape = wkb_loads(
+            '0103000000010000000400000000000000DAA90C4100000050AECA5741001F3A'
+            '68F4A90C41647D6020AFCA5741001F3A68F4A90C4195DC9C73AECA5741000000'
+            '00DAA90C4100000050AECA5741'.decode('hex'))
+
+        layers = [dict(
+            name=unicode('layer'),
+            features=[
+                dict(
+                    geometry=shape,
+                    properties={
+                        'foo': 'bar',
+                    },
+                    id=1
+                ),
+            ],
+        )]
+
+        bounds = (156543.03392808512, 6183449.840157587,
+                  234814.5508921072, 6261721.357121607)
+        extents = 8192
+
+        tile_data = coanacatl.encode(layers, bounds, extents)
+        self.assertEqual('', tile_data)
+
+    def test_discard_empty_line(self):
+        import coanacatl
+        from shapely.geometry import LineString
+
+        shape = LineString([(0, 0), (1.0e-10, 0)])
+
+        layers = [dict(
+            name=unicode('layer'),
+            features=[
+                dict(
+                    geometry=shape,
+                    properties={
+                        'foo': 'bar',
+                    },
+                    id=1
+                ),
+            ],
+        )]
+
+        bounds = (0, 0, 1, 1)
+        extents = 4096
+
+        tile_data = coanacatl.encode(layers, bounds, extents)
+        self.assertEqual('', tile_data)

@@ -142,7 +142,7 @@ private:
     vtzero::layer_builder &lb);
   polygon geom_to_poly(const GEOSGeom_t *geometry);
   linear_ring ring_to_mbg(const GEOSGeom_t *linear_ring);
-  void add_linestring(vtzero::linestring_feature_builder &fb, const GEOSGeom_t *geometry);
+  std::vector<vtzero::point> distinct_linestring(const GEOSGeom_t *geometry);
   void encode_wagyu_result(
     wagyu &w,
     bp::dict props,
@@ -248,10 +248,8 @@ void encoder::encode_point(
   add_properties(fb, props);
 }
 
-void encoder::add_linestring(
-  vtzero::linestring_feature_builder &fb,
+std::vector<vtzero::point> encoder::distinct_linestring(
   const GEOSGeom_t *geometry) {
-
   // NOTE: coord_seq is owned by the geometry, so we do not free it.
   const GEOSCoordSequence *coord_seq = GEOSGeom_getCoordSeq_r(m_geos_ctx, geometry);
   if (coord_seq == nullptr) {
@@ -266,14 +264,22 @@ void encoder::add_linestring(
     throw std::runtime_error("Must have at least 2 points in a linestring");
   }
 
+  // only use _distinct_ points. it's not allowed to have two adjacent
+  // points with the same coordinates.
+  std::vector<vtzero::point> distinct;
+  distinct.reserve(num_points);
+
   double x, y;
-  fb.add_linestring(num_points);
   for (unsigned int i = 0; i < num_points; ++i) {
     GEOSCoordSeq_getX_r(m_geos_ctx, coord_seq, i, &x);
     GEOSCoordSeq_getY_r(m_geos_ctx, coord_seq, i, &y);
     vtzero::point p = translate(x, y);
-    fb.set_point(p);
+    if (i == 0 || p != distinct[i-1]) {
+      distinct.push_back(p);
+    }
   }
+
+  return distinct;
 }
 
 void encoder::encode_linestring(
@@ -282,12 +288,18 @@ void encoder::encode_linestring(
   uint64_t fid,
   vtzero::layer_builder &lb) {
 
-  vtzero::linestring_feature_builder fb{lb};
-  add_id(fb, fid);
+  auto distinct = distinct_linestring(geometry);
 
-  add_linestring(fb, geometry);
+  // ignore a geometry with not enough distinct points.
+  // TODO: we should log this!
+  if (distinct.size() >= 2) {
+    vtzero::linestring_feature_builder fb{lb};
+    add_id(fb, fid);
 
-  add_properties(fb, props);
+    fb.add_linestring_from_container(distinct);
+
+    add_properties(fb, props);
+  }
 }
 
 linear_ring encoder::ring_to_mbg(const GEOSGeom_t *geos_ring) {
@@ -384,8 +396,8 @@ void encoder::encode_multi_linestring(
   uint64_t fid,
   vtzero::layer_builder &lb) {
 
+  bool output_started = false;
   vtzero::linestring_feature_builder fb{lb};
-  add_id(fb, fid);
 
   const int num_geoms = GEOSGetNumGeometries_r(m_geos_ctx, multi_geometry);
   if (num_geoms < 0) {
@@ -397,10 +409,24 @@ void encoder::encode_multi_linestring(
     if (geom == nullptr) {
       throw std::runtime_error("Error calling GEOSGetGeometryN_r");
     }
-    add_linestring(fb, geom);
+    auto distinct = distinct_linestring(geom);
+    // ignore degenerate linestrings without at least 2 distinct points.
+    // TODO: log warnings.
+    if (distinct.size() >= 2) {
+      // lazy output of ID, in case we don't actually end up outputting anything
+      // at all, then we can just ignore the whole feature.
+      if (!output_started) {
+        add_id(fb, fid);
+        output_started = true;
+      }
+
+      fb.add_linestring_from_container(distinct);
+    }
   }
 
-  add_properties(fb, props);
+  if (output_started) {
+    add_properties(fb, props);
+  }
 }
 
 void encoder::encode_multi_polygon(
@@ -438,15 +464,13 @@ void encoder::encode_wagyu_result(
     mgw::fill_type_even_odd,
     mgw::fill_type_even_odd);
 
-  if (!ok) {
+  if (!ok || result.empty()) {
     // this is probably because the polygon ended up being degenerate in integer
     // coordinates.
 
     // TODO: warning?
     return;
   }
-
-  assert(result.size() > 0);
 
   vtzero::polygon_feature_builder fb{lb};
   add_id(fb, fid);
