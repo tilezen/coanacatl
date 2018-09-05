@@ -438,15 +438,13 @@ void encoder::encode_wagyu_result(
     mgw::fill_type_even_odd,
     mgw::fill_type_even_odd);
 
-  if (!ok) {
+  if (!ok || result.empty()) {
     // this is probably because the polygon ended up being degenerate in integer
     // coordinates.
 
     // TODO: warning?
     return;
   }
-
-  assert(result.size() > 0);
 
   vtzero::polygon_feature_builder fb{lb};
   add_id(fb, fid);
