@@ -366,13 +366,21 @@ void encoder::encode_multi_point(
   uint64_t fid,
   vtzero::layer_builder &lb) {
 
-  vtzero::point_feature_builder fb{lb};
-  add_id(fb, fid);
-
   const int num_geoms = GEOSGetNumGeometries_r(m_geos_ctx, multi_geometry);
   if (num_geoms < 0) {
     throw std::runtime_error("Error calling GEOSGetNumGeometries_r");
   }
+
+  // shapely generally sets the geometry type of empty multi* to
+  // "GeometryCollection", which we don't support, so i would be surprised if
+  // this exception ever gets thrown. however, it seems worth having as a
+  // check on my assumptions.
+  if (num_geoms == 0) {
+    throw std::runtime_error("Cannot encode empty multipoint");
+  }
+
+  vtzero::point_feature_builder fb{lb};
+  add_id(fb, fid);
 
   fb.add_points(num_geoms);
   for (int i = 0; i < num_geoms; ++i) {
@@ -396,14 +404,12 @@ void encoder::encode_multi_linestring(
   uint64_t fid,
   vtzero::layer_builder &lb) {
 
-  bool output_started = false;
-  vtzero::linestring_feature_builder fb{lb};
-
   const int num_geoms = GEOSGetNumGeometries_r(m_geos_ctx, multi_geometry);
   if (num_geoms < 0) {
     throw std::runtime_error("Error calling GEOSGetNumGeometries_r");
   }
 
+  std::list<std::vector<vtzero::point> > multi_distinct;
   for (int i = 0; i < num_geoms; ++i) {
     const GEOSGeom_t *geom = GEOSGetGeometryN_r(m_geos_ctx, multi_geometry, i);
     if (geom == nullptr) {
@@ -413,18 +419,19 @@ void encoder::encode_multi_linestring(
     // ignore degenerate linestrings without at least 2 distinct points.
     // TODO: log warnings.
     if (distinct.size() >= 2) {
-      // lazy output of ID, in case we don't actually end up outputting anything
-      // at all, then we can just ignore the whole feature.
-      if (!output_started) {
-        add_id(fb, fid);
-        output_started = true;
-      }
-
-      fb.add_linestring_from_container(distinct);
+      multi_distinct.emplace_back(std::move(distinct));
     }
   }
 
-  if (output_started) {
+  // only start the feature_builder if we have geometry to output!
+  if (multi_distinct.size() > 0) {
+    vtzero::linestring_feature_builder fb{lb};
+    add_id(fb, fid);
+
+    for (auto const &distinct : multi_distinct) {
+      fb.add_linestring_from_container(distinct);
+    }
+
     add_properties(fb, props);
   }
 }
@@ -470,6 +477,21 @@ void encoder::encode_wagyu_result(
 
     // TODO: warning?
     return;
+  }
+
+  // check that the result we got back has at least one ring in it. i don't
+  // really expect this to ever fail, but is here just in case my assumptions
+  // about what comes back from wagyu are incorrect.
+  size_t num_rings = 0;
+  for (const polygon &p : result) {
+    for (const linear_ring &lr : p) {
+      if (!lr.empty()) {
+        num_rings += 1;
+      }
+    }
+  }
+  if (num_rings == 0) {
+    throw std::runtime_error("Wagyu returned a result with no linear rings");
   }
 
   vtzero::polygon_feature_builder fb{lb};

@@ -229,6 +229,8 @@ class DiscardEmptyTest(TestCase):
         import coanacatl
         from shapely.geometry import LineString
 
+        # linestring is too short - it will become collapsed to a single point
+        # and we should discard it without ID or properties output.
         shape = LineString([(0, 0), (1.0e-10, 0)])
 
         layers = [dict(
@@ -236,6 +238,70 @@ class DiscardEmptyTest(TestCase):
             features=[
                 dict(
                     geometry=shape,
+                    properties={
+                        'foo': 'bar',
+                    },
+                    id=1
+                ),
+            ],
+        )]
+
+        bounds = (0, 0, 1, 1)
+        extents = 4096
+
+        tile_data = coanacatl.encode(layers, bounds, extents)
+        self.assertEqual('', tile_data)
+
+    def test_discard_empty_multi_line(self):
+        import coanacatl
+        from shapely.geometry import LineString, MultiLineString
+
+        # linestring is too short - it will become collapsed to a single point
+        # and we should discard the whole multilinestring feature without ID
+        # or properties output.
+        shape = LineString([(0, 0), (1.0e-10, 0)])
+        shapes = MultiLineString([shape])
+
+        layers = [dict(
+            name=unicode('layer'),
+            features=[
+                dict(
+                    geometry=shapes,
+                    properties={
+                        'foo': 'bar',
+                    },
+                    id=1
+                ),
+            ],
+        )]
+
+        bounds = (0, 0, 1, 1)
+        extents = 4096
+
+        tile_data = coanacatl.encode(layers, bounds, extents)
+        self.assertEqual('', tile_data)
+
+    def test_discard_empty_multi_poly(self):
+        import coanacatl
+        from shapely.geometry import Polygon, MultiPolygon
+
+        # polygon is too small - will become degenerate, with all points
+        # collapsed to the same coordinate. we should discard this, and not
+        # output any ID or properties.
+        shape = Polygon([
+            [0.0, 0.0],
+            [1.0e-6, 0.0],
+            [1.0e-6, 1.0e-6],
+            [0.0, 1.0e-6],
+            [0.0, 0.0],
+        ])
+        shapes = MultiPolygon([shape])
+
+        layers = [dict(
+            name=unicode('layer'),
+            features=[
+                dict(
+                    geometry=shapes,
                     properties={
                         'foo': 'bar',
                     },
