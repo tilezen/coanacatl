@@ -2,6 +2,10 @@ from setuptools import setup
 from distutils.extension import Extension
 import os.path
 
+version_path = os.path.join(os.path.dirname(__file__), 'VERSION')
+with open(version_path) as fh:
+    version = fh.read().strip()
+
 extension = Extension(
     "coanacatl",
     ["coanacatl/coanacatl.cpp"],
@@ -18,6 +22,7 @@ extension = Extension(
 
 setup(
     name="coanacatl",
+    version=version,
     ext_modules=[extension],
     test_suite='test',
 )
